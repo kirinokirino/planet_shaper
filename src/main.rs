@@ -31,7 +31,7 @@
     clippy::as_conversions,
     clippy::verbose_file_reads
 )]
-#![allow(clippy::wildcard_imports, unused_imports, clippy::cast_precision_loss)]
+#![allow(clippy::wildcard_imports, unused_imports)]
 
 mod camera;
 mod common;

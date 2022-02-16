@@ -6,7 +6,7 @@ use crate::common::*;
 use crate::noise::Noise;
 use crate::planet::Planet;
 
-pub const NOISE_SIZE: u16 = 1000;
+pub const NOISE_SIZE: u16 = 2000;
 
 pub struct World {
     planet: OnceCell<Planet>,
@@ -38,10 +38,10 @@ impl World {
 
     pub fn input(&mut self) {
         let lmb = is_mouse_button_pressed(MouseButton::Left);
-        let W = is_key_down(KeyCode::W) || is_key_down(KeyCode::Comma);
-        let S = is_key_down(KeyCode::S) || is_key_down(KeyCode::O);
-        let A = is_key_down(KeyCode::A);
-        let D = is_key_down(KeyCode::D) || is_key_down(KeyCode::E);
+        let _w = is_key_down(KeyCode::W) || is_key_down(KeyCode::Comma);
+        let _s = is_key_down(KeyCode::S) || is_key_down(KeyCode::O);
+        let _a = is_key_down(KeyCode::A);
+        let _d = is_key_down(KeyCode::D) || is_key_down(KeyCode::E);
 
         if lmb {
             let camera = self.main_camera;
@@ -58,7 +58,10 @@ impl World {
             debug!("mouse: {:?}, mouse_world: {}", mouse_position(), mouse);
 
             if let Some(planet) = self.planet.get_mut() {
-                std::mem::replace(planet, Planet::new(vec2(0.0, 0.0), 1500.0, &self.noise));
+                let new_planet = Planet::new(vec2(0.0, 0.0), 1500.0, &self.noise);
+                let planet_image = Planet::as_image(&new_planet);
+                self.planet_texture = Some(Texture2D::from_image(&planet_image));
+                std::mem::replace(planet, new_planet);
             }
         }
 
@@ -85,14 +88,14 @@ impl World {
         planet.draw();
 
         let mouse = self.main_camera.mouse_world_position();
-        let is_inside_planet = Planet::is_inside(planet, mouse);
+        let is_inside_planet = Planet::is_inside_expensive(planet, mouse);
         if is_inside_planet {
             draw_circle(mouse.x, mouse.y, 10.0, color_u8!(0, 255, 0, 255));
         } else {
             draw_circle(mouse.x, mouse.y, 10.0, color_u8!(255, 0, 0, 255));
         }
 
-        let mut viewport = self.main_camera.viewport_rect();
+        let _viewport = self.main_camera.viewport_rect();
         let (width, height) = (screen_width(), screen_height());
         let (center_x, center_y) = (self.main_camera.target.x, self.main_camera.target.y);
         let top_left_x = center_x - width;

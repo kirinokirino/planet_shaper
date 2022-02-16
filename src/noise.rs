@@ -1,8 +1,9 @@
+use crate::world::NOISE_SIZE;
 use macroquad::prelude::*;
 use once_cell::sync::OnceCell;
 use simple_simplex::NoiseConfig;
 
-use crate::world::NOISE_SIZE;
+use ::rand::prelude::random;
 
 pub struct Noise {
     image: OnceCell<Image>,
@@ -23,22 +24,27 @@ impl Noise {
 
     pub fn gen_image() -> Image {
         let simplex: NoiseConfig = NoiseConfig::new(
-            4,                   // Octaves
-            0.01,                // X-Frequency
-            0.01,                // Y-Frequency
-            0.05,                // Amplitude
-            3.0,                 // Lacunarity
-            0.25,                // Gain
-            (0.0, 255.0),        // range
-            rand::rand().into(), // seed
+            4,               // Octaves
+            0.008,           // X-Frequency
+            0.008,           // Y-Frequency
+            0.05,            // Amplitude
+            3.0,             // Lacunarity
+            0.25,            // Gain
+            (0.0, 1.0),      // range
+            random::<u64>(), // seed
         );
 
         let mut image = Image::gen_image_color(NOISE_SIZE, NOISE_SIZE, color_u8!(255, 0, 255, 255));
 
         for y in 0..NOISE_SIZE {
             for x in 0..NOISE_SIZE {
-                let color: u8 = simplex.generate_range(x.into(), y.into()) as u8;
-                let color = color_u8!(color, color, color, 255);
+                let color = simplex.generate_range(x.into(), y.into());
+                let color = Color {
+                    r: color,
+                    g: color,
+                    b: color,
+                    a: 1.0,
+                };
                 image.set_pixel(u32::from(x), u32::from(y), color);
             }
         }

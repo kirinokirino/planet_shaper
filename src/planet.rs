@@ -10,7 +10,7 @@ pub struct Planet {
     pub center: Vec2,
     radius: f32,
     max_radius: f32,
-    extents: Rect,
+    pub extents: Rect,
 
     pub surface: Vec<Vec2>,
 }

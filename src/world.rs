@@ -85,7 +85,6 @@ impl World {
         });
 
         let planet = unsafe { self.planet.get_unchecked() };
-        planet.draw();
 
         let mouse = self.main_camera.mouse_world_position();
         let is_inside_planet = Planet::is_inside_expensive(planet, mouse);
@@ -100,19 +99,15 @@ impl World {
         let (center_x, center_y) = (self.main_camera.target.x, self.main_camera.target.y);
         let top_left_x = center_x - width;
         let top_left_y = center_y - height;
-        draw_rectangle_lines(
-            top_left_x,
-            top_left_y,
-            width * 2.0,
-            height * 2.0,
-            50.0,
-            color_u8!(50, 120, 100, 100),
-        );
+
+        let planet_x = planet.extents.x;
+        let planet_y = planet.extents.y;
+
         if let Some(planet_texture) = self.planet_texture {
             draw_texture(
                 planet_texture,
-                4000.0,
-                -2000.0,
+                planet_x,
+                planet_y,
                 color_u8!(255, 255, 255, 255),
             );
         }

@@ -60,26 +60,34 @@ pub fn draw(_delta: f64) {
     let (x, y) = unsafe { MOUSE };
     let mouse = Vec2::new(x, y);
     let angle = mouse.angle_between(Vec2::new(0.0, 1.0));
-    let mut left = -10.0;
-    let mut right = 10.0;
+    let mut left_min = -10.0;
+    let mut right_min = 10.0;
+    let mut left = 0.0;
+    let mut right = 0.0;
     let mut left_seg = Vec2::new(0.0, 0.0);
     let mut right_seg = Vec2::new(0.0, 0.0);
     for segment in &circle.surface {
         let segment_angle = segment.angle_between(Vec2::new(0.0, 1.0));
         let diff = angle - segment_angle;
-        if (diff < right && diff > 0.0) {
-            right = diff;
+        if (diff < right_min && diff > 0.0) {
+            right_min = diff;
+            right = segment_angle;
             right_seg = *segment;
         }
-        if (diff > left && diff < 0.0) {
-            left = diff;
+        if (diff > left_min && diff < 0.0) {
+            left_min = diff;
+            left = segment_angle;
             left_seg = *segment;
         }
     }
-    draw_circle(left_seg.x, left_seg.y, 30.0, color_u8!(255, 0, 255, 255));
-    draw_circle(right_seg.x, right_seg.y, 30.0, color_u8!(0, 255, 255, 255));
-    let is_inside_planet = false;
-
+    let procent = map(angle, left, right, 0.0, 1.0);
+    let lerp_x = lerp(left_seg.x, right_seg.x, procent);
+    let lerp_y = lerp(left_seg.y, right_seg.y, procent);
+    //draw_circle(left_seg.x, left_seg.y, 30.0, color_u8!(255, 0, 255, 255));
+    //draw_circle(right_seg.x, right_seg.y, 30.0, color_u8!(0, 255, 255, 255));
+    draw_circle(lerp_x, lerp_y, 10.0, color_u8!(0, 255, 0, 255));
+    let surface_point = Vec2::new(lerp_x, lerp_y);
+    let is_inside_planet = mouse.distance(circle.center) < surface_point.distance(circle.center);
     if is_inside_planet {
         draw_circle(x, y, 10.0, color_u8!(0, 255, 0, 255));
     } else {

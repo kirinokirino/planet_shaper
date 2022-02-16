@@ -46,6 +46,8 @@ use macroquad::text::draw_text;
 use macroquad::time::{get_fps, get_time};
 use macroquad::window::{clear_background, next_frame, screen_height, screen_width};
 
+use crate::sketch::MOUSE;
+
 mod sketch;
 use sketch::{draw, setup};
 
@@ -57,27 +59,52 @@ pub struct Camera {
 
 impl Camera {
     #[must_use]
-    pub fn mouse_position(&self) -> Vec2 {
+    pub fn viewport_size(&self) -> (f32, f32) {
+        (2.0 * (1.0 / self.zoom.x), 2.0 * (1.0 / self.zoom.y))
+    }
+
+    #[must_use]
+    pub fn screen_to_world(&self, point: Vec2) -> Vec2 {
+        let (half_width, half_height) = (screen_width() / 2.0, screen_height() / 2.0);
+        // x, y offset from the center of the window.
+        let (x, y) = ((point.x - half_width), (point.y - half_height));
+
+        let (viewport_width, viewport_height) = self.viewport_size();
+        let (half_viewport_width, half_viewport_height) =
+            ((viewport_width / 2.0), (viewport_height / 2.0));
+
+        let result_x = map(
+            x,
+            -half_width,
+            half_width,
+            -half_viewport_width,
+            half_viewport_width,
+        );
+        let result_y = map(
+            y,
+            -half_height,
+            half_height,
+            -half_viewport_height,
+            half_viewport_height,
+        );
+        vec2(result_x + self.target.x, result_y + self.target.y)
+    }
+
+    #[must_use]
+    pub fn mouse_world_position(&self) -> Vec2 {
         let mouse = mouse_position();
-        Vec2::new(
-            ((mouse.0 - screen_width() / 2.0) / (screen_width() / 2.0) / self.zoom.x)
-                + self.target.x,
-            ((-mouse.1 + screen_height() / 2.0)
-                / (screen_height() / 2.0)
-                / self.zoom.x
-                / (screen_width() / screen_height()))
-                + self.target.y,
-        )
+        let mouse = vec2(mouse.0, mouse.1);
+        self.screen_to_world(mouse)
     }
 }
 
 fn move_camera(camera: &mut Camera) {
     // scroll
     if is_key_down(KeyCode::Comma) {
-        camera.target.y += 0.01 / camera.zoom.x;
+        camera.target.y -= 0.01 / camera.zoom.x;
     }
     if is_key_down(KeyCode::O) {
-        camera.target.y -= 0.01 / camera.zoom.x;
+        camera.target.y += 0.01 / camera.zoom.x;
     }
     if is_key_down(KeyCode::A) {
         camera.target.x -= 0.01 / camera.zoom.x;
@@ -114,17 +141,29 @@ async fn main() {
     };
 
     loop {
-        move_camera(&mut main_camera);
+        clear_background(color_u8!(255, 255, 255, 255));
 
+        move_camera(&mut main_camera);
+        let v = main_camera.mouse_world_position();
+        let (x, y) = (v.x, v.y);
+        unsafe { MOUSE = (x, y) };
         // Camera space, render game objects
         set_camera(&Camera2D {
             target: main_camera.target,
-            zoom: main_camera.zoom,
+            zoom: Vec2::new(main_camera.zoom.x, -main_camera.zoom.y),
             ..Camera2D::default()
         });
 
         sketch.draw();
 
+        set_default_camera();
+        draw_text(
+            &format!("mouse: {:?}, fps: {}", unsafe { MOUSE }, get_fps()),
+            10.0,
+            20.0,
+            30.0,
+            colors::BLACK,
+        );
         next_frame().await;
     }
 }
@@ -180,7 +219,11 @@ where
             overall_time: get_time(),
         };
 
-        clear_background(color_u8!(255, 255, 255, 255));
         (self.draw_callback)(delta);
     }
+}
+
+#[must_use]
+pub fn map(value: f32, start1: f32, stop1: f32, start2: f32, stop2: f32) -> f32 {
+    ((value - start1) / (stop1 - start1)).mul_add(stop2 - start2, start2)
 }

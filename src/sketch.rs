@@ -16,6 +16,7 @@ static mut CIRCLE: OnceCell<Circle> = OnceCell::new();
 static mut FRAME: u64 = 0;
 static mut PLAYER: OnceCell<Square> = OnceCell::new();
 pub static mut CAMERA_FOLLOW: OnceCell<Option<(Vec2, f32)>> = OnceCell::new();
+pub static mut MOUSE: (f32, f32) = (0.0, 0.0);
 pub fn setup() {
     unsafe { PLAYER.get_or_init(|| Square::new(vec2(1700.0, 100.0))) };
     unsafe { CAMERA_FOLLOW.get_or_init(|| None) };
@@ -37,9 +38,9 @@ pub fn draw(_delta: f64) {
     };
 
     if D {
-        player.rotation += (-0.01);
+        player.rotation += -0.01;
     } else if A {
-        player.rotation -= (-0.01);
+        player.rotation -= -0.01;
     }
 
     if W {}
@@ -59,23 +60,11 @@ pub fn draw(_delta: f64) {
         }
     }
 
-    draw_ui();
-
+    let (x, y) = unsafe { MOUSE };
+    draw_circle(x, y, 10.0, color_u8!(255, 0, 0, 255));
     unsafe {
         FRAME += 1;
     }
-}
-
-fn draw_ui() {
-    // Screen space, render fixed ui
-    set_default_camera();
-    draw_text(
-        &format!("mouse: {:?}, fps: {}", mouse_position(), get_fps()),
-        10.0,
-        20.0,
-        30.0,
-        colors::BLACK,
-    );
 }
 
 pub fn lerp(from: f32, to: f32, p: f32) -> f32 {
@@ -241,7 +230,7 @@ impl Circle {
                 point.y,
                 last_point.x,
                 last_point.y,
-                2.0,
+                20.0,
                 color_u8!(0, 0, 0, 255),
             );
             last_point = point;

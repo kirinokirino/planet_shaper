@@ -1,20 +1,24 @@
 use macroquad::prelude::*;
 
+use crate::common::*;
 use crate::noise::Noise;
 
 pub struct Planet {
     pub center: Vec2,
     radius: f32,
+    extents: Rect,
 
     pub surface: Vec<Vec2>,
 }
 
 impl Planet {
     pub fn new(center: Vec2, radius: f32, noise: &Noise) -> Self {
+        let surface = Self::create_surface(500, center, radius, noise);
         Self {
             center,
             radius,
-            surface: Self::create_surface(500, center, radius, noise),
+            extents: Self::calculate_extents(&surface),
+            surface,
         }
     }
 
@@ -38,6 +42,73 @@ impl Planet {
         }
 
         surface
+    }
+
+    fn calculate_extents(surface: &[Vec2]) -> Rect {
+        let mut min_x = std::f32::INFINITY;
+        let mut min_y = std::f32::INFINITY;
+        let mut max_x = std::f32::NEG_INFINITY;
+        let mut max_y = std::f32::NEG_INFINITY;
+        for point in surface {
+            if point.x < min_x {
+                min_x = point.x;
+            }
+            if point.x > max_x {
+                max_x = point.x;
+            }
+            if point.y < min_y {
+                min_y = point.y;
+            }
+            if point.y > max_y {
+                max_y = point.y;
+            }
+        }
+        let width = max_x - min_x;
+        let height = max_y - min_y;
+        Rect::new(min_x, min_y, width, height)
+    }
+
+    pub fn is_inside(planet: &Self, point: Vec2) -> bool {
+        let angle = point.angle_between(Vec2::new(0.0, 1.0));
+        let mut left_min = -10.0;
+        let mut right_min = 10.0;
+        let mut left = 0.0;
+        let mut right = 0.0;
+        let mut left_seg = Vec2::new(0.0, 0.0);
+        let mut right_seg = Vec2::new(0.0, 0.0);
+        for segment in &planet.surface {
+            let segment_angle = segment.angle_between(Vec2::new(0.0, 1.0));
+            let diff = angle - segment_angle;
+            if (diff < right_min && diff > 0.0) {
+                right_min = diff;
+                right = segment_angle;
+                right_seg = *segment;
+            }
+            if (diff > left_min && diff < 0.0) {
+                left_min = diff;
+                left = segment_angle;
+                left_seg = *segment;
+            }
+        }
+        let procent = map(angle, left, right, 0.0, 1.0);
+        let lerp_x = lerp(left_seg.x, right_seg.x, procent);
+        let lerp_y = lerp(left_seg.y, right_seg.y, procent);
+        draw_circle(lerp_x, lerp_y, 10.0, color_u8!(0, 255, 0, 255));
+        let surface_point = Vec2::new(lerp_x, lerp_y);
+        point.distance(planet.center) < surface_point.distance(planet.center)
+    }
+
+    pub fn as_image(planet: &Self) -> Image {
+        let Planet {
+            center,
+            radius,
+            extents,
+            surface,
+        } = planet;
+        let width = extents.w as u16;
+        let height = extents.h as u16;
+        let mut planet_image = Image::gen_image_color(width, height, color_u8!(255, 0, 0, 60));
+        planet_image
     }
 
     pub fn draw(&self) {
@@ -68,5 +139,7 @@ impl Planet {
                 last_point = point;
             }
         }
+        let Rect { x, y, w, h } = self.extents;
+        draw_rectangle_lines(x, y, w, h, 10.0, color_u8!(255, 255, 255, 255));
     }
 }

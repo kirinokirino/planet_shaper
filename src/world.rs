@@ -10,6 +10,7 @@ pub const NOISE_SIZE: u16 = 1000;
 
 pub struct World {
     planet: OnceCell<Planet>,
+    planet_texture: Option<Texture2D>,
     noise: Noise,
 
     main_camera: Camera,
@@ -20,6 +21,7 @@ impl World {
     pub fn new() -> Self {
         Self {
             planet: OnceCell::new(),
+            planet_texture: None,
             noise: Noise::new(),
             main_camera: Camera::new(),
         }
@@ -27,8 +29,11 @@ impl World {
 
     pub fn setup(&mut self) {
         let noise = &self.noise;
-        self.planet
+        let planet = self
+            .planet
             .get_or_init(|| Planet::new(vec2(0.0, 0.0), 1500.0, noise));
+        let planet_image = Planet::as_image(planet);
+        self.planet_texture = Some(Texture2D::from_image(&planet_image));
     }
 
     pub fn input(&mut self) {
@@ -80,42 +85,11 @@ impl World {
         planet.draw();
 
         let mouse = self.main_camera.mouse_world_position();
-        let (x, y) = (mouse.x, mouse.y);
-        let mouse = Vec2::new(x, y);
-        let angle = mouse.angle_between(Vec2::new(0.0, 1.0));
-        let mut left_min = -10.0;
-        let mut right_min = 10.0;
-        let mut left = 0.0;
-        let mut right = 0.0;
-        let mut left_seg = Vec2::new(0.0, 0.0);
-        let mut right_seg = Vec2::new(0.0, 0.0);
-        for segment in &planet.surface {
-            let segment_angle = segment.angle_between(Vec2::new(0.0, 1.0));
-            let diff = angle - segment_angle;
-            if (diff < right_min && diff > 0.0) {
-                right_min = diff;
-                right = segment_angle;
-                right_seg = *segment;
-            }
-            if (diff > left_min && diff < 0.0) {
-                left_min = diff;
-                left = segment_angle;
-                left_seg = *segment;
-            }
-        }
-        let procent = map(angle, left, right, 0.0, 1.0);
-        let lerp_x = lerp(left_seg.x, right_seg.x, procent);
-        let lerp_y = lerp(left_seg.y, right_seg.y, procent);
-        //draw_circle(left_seg.x, left_seg.y, 30.0, color_u8!(255, 0, 255, 255));
-        //draw_circle(right_seg.x, right_seg.y, 30.0, color_u8!(0, 255, 255, 255));
-        draw_circle(lerp_x, lerp_y, 10.0, color_u8!(0, 255, 0, 255));
-        let surface_point = Vec2::new(lerp_x, lerp_y);
-        let is_inside_planet =
-            mouse.distance(planet.center) < surface_point.distance(planet.center);
+        let is_inside_planet = Planet::is_inside(planet, mouse);
         if is_inside_planet {
-            draw_circle(x, y, 10.0, color_u8!(0, 255, 0, 255));
+            draw_circle(mouse.x, mouse.y, 10.0, color_u8!(0, 255, 0, 255));
         } else {
-            draw_circle(x, y, 10.0, color_u8!(255, 0, 0, 255));
+            draw_circle(mouse.x, mouse.y, 10.0, color_u8!(255, 0, 0, 255));
         }
 
         let mut viewport = self.main_camera.viewport_rect();
@@ -131,5 +105,13 @@ impl World {
             50.0,
             color_u8!(50, 120, 100, 100),
         );
+        if let Some(planet_texture) = self.planet_texture {
+            draw_texture(
+                planet_texture,
+                4000.0,
+                -2000.0,
+                color_u8!(255, 255, 255, 255),
+            );
+        }
     }
 }

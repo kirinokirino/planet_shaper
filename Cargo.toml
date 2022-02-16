@@ -1,10 +1,10 @@
 [package]
-name = "macroquad_p5"
+name = "planet_shaper"
 version = "0.1.0"
 authors = ["kirinokirino <kirinokirino@lunariko.com>"]
 edition = "2021"
-description = "A macroquad template for creative coding, inspired by p5 / Processing."
-repository = "https://github.com/kirinokirino/macroquad_p5"
+description = "Create visually interesting planets."
+repository = "https://github.com/kirinokirino/planet_shaper"
 documentation = ""
 homepage = ""
 readme = "README.md"

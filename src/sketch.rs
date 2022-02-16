@@ -4,6 +4,8 @@ use macroquad::math::clamp;
 use macroquad::shapes::draw_triangle;
 use macroquad::texture::{draw_texture, Image, Texture2D};
 
+use macroquad::math::{Mat3, XY};
+
 use simple_simplex::NoiseConfig;
 
 use once_cell::sync::OnceCell;
@@ -11,25 +13,43 @@ use once_cell::sync::OnceCell;
 const NOISE_SIZE: u16 = 1000;
 static mut NOISE: Noise = Noise::new();
 static mut CIRCLE: OnceCell<Circle> = OnceCell::new();
-
-pub fn setup() {}
+static mut FRAME: u64 = 0;
+static mut PLAYER: OnceCell<Square> = OnceCell::new();
+pub static mut CAMERA_FOLLOW: OnceCell<Option<(Vec2, f32)>> = OnceCell::new();
+pub fn setup() {
+    unsafe { PLAYER.get_or_init(|| Square::new(vec2(1700.0, 100.0))) };
+    unsafe { CAMERA_FOLLOW.get_or_init(|| None) };
+}
 
 pub fn draw(_delta: f64) {
+    let frame = unsafe { FRAME };
     let lmb = is_mouse_button_pressed(MouseButton::Left);
-    /* unsafe {
-        for (i, noise) in NOISES.iter().enumerate() {
-            noise.draw_at(
-                0.0 + f32::from(NOISE_SIZE * i as u16),
-                0.0, // + f32::from(NOISE_SIZE * i as u16),
-            );
-        }
-    } */
+    let W = is_key_down(KeyCode::W) || is_key_down(KeyCode::Comma);
+    let S = is_key_down(KeyCode::S) || is_key_down(KeyCode::O);
+    let A = is_key_down(KeyCode::A);
+    let D = is_key_down(KeyCode::D) || is_key_down(KeyCode::E);
+
+    let mut player = unsafe { PLAYER.get_mut().expect("Should be initialized in setup.") }; //rotated(-std::f32::consts::PI * frame as f32 * 0.001);
+    let mut camera_follow = unsafe {
+        CAMERA_FOLLOW
+            .get_mut()
+            .expect("Should be initialized in setup.")
+    };
+
+    if D {
+        player.rotation += (-0.01);
+    } else if A {
+        player.rotation -= (-0.01);
+    }
+
+    if W {}
+    *camera_follow = Some((player.center, player.rotation));
+    player.draw();
     unsafe {
         CIRCLE
             .get_or_init(|| Circle::new(vec2(0.0, 0.0), 1500.0))
             .draw();
     }
-
     if lmb {
         let circle = Circle::new(vec2(0.0, 0.0), 1500.0);
         unsafe {
@@ -40,6 +60,10 @@ pub fn draw(_delta: f64) {
     }
 
     draw_ui();
+
+    unsafe {
+        FRAME += 1;
+    }
 }
 
 fn draw_ui() {
@@ -64,6 +88,106 @@ pub fn map(value: f32, start1: f32, stop1: f32, start2: f32, stop2: f32) -> f32 
 
 pub fn norm(value: f32, start: f32, stop: f32) -> f32 {
     map(value, start, stop, 0.0, 1.0)
+}
+
+struct Square {
+    pub center: Vec2,
+    size: f32,
+    pub rotation: f32,
+}
+
+impl Square {
+    pub const fn new(center: Vec2) -> Self {
+        Self {
+            center,
+            size: 25.0,
+            rotation: 0.0,
+        }
+    }
+    pub const fn rotated(self, rotation: f32) -> Self {
+        Self {
+            center: self.center,
+            size: self.size,
+            rotation,
+        }
+    }
+    pub const fn sized(self, size: f32) -> Self {
+        Self {
+            center: self.center,
+            size,
+            rotation: self.rotation,
+        }
+    }
+
+    fn corners(size: f32, center: Vec2) -> [Vec2; 4] {
+        let half_size = size / 2.0;
+        let (x, y) = (0.0, 0.0);
+        [
+            Vec2::new(x - half_size, y - half_size),
+            Vec2::new(x + half_size, y - half_size),
+            Vec2::new(x + half_size, y + half_size),
+            Vec2::new(x - half_size, y + half_size),
+        ]
+    }
+
+    fn rotate(p: [Vec2; 4], rotation: f32) -> [Vec2; 4] {
+        let r = Mat3::from_rotation_z(rotation);
+        [
+            r.transform_point2(p[0]),
+            r.transform_point2(p[1]),
+            r.transform_point2(p[2]),
+            r.transform_point2(p[3]),
+        ]
+    }
+
+    pub fn draw(&self) {
+        let corners = Self::rotate(Self::corners(self.size, self.center), self.rotation);
+        let thickness = 5.0;
+        let color = color_u8!(155, 155, 155, 155);
+        let rot_matrix = Mat3::from_rotation_z(self.rotation);
+
+        let rot_point = rot_matrix.transform_vector2(vec2(0.0, self.size / 2.0));
+        draw_line(
+            self.center.x,
+            self.center.y,
+            self.center.x + rot_point.x,
+            self.center.y + rot_point.y,
+            thickness,
+            color,
+        );
+        draw_line(
+            self.center.x + corners[0].x,
+            self.center.y + corners[0].y,
+            self.center.x + corners[1].x,
+            self.center.y + corners[1].y,
+            thickness,
+            color,
+        );
+        draw_line(
+            self.center.x + corners[1].x,
+            self.center.y + corners[1].y,
+            self.center.x + corners[2].x,
+            self.center.y + corners[2].y,
+            thickness,
+            color,
+        );
+        draw_line(
+            self.center.x + corners[2].x,
+            self.center.y + corners[2].y,
+            self.center.x + corners[3].x,
+            self.center.y + corners[3].y,
+            thickness,
+            color,
+        );
+        draw_line(
+            self.center.x + corners[3].x,
+            self.center.y + corners[3].y,
+            self.center.x + corners[0].x,
+            self.center.y + corners[0].y,
+            thickness,
+            color,
+        );
+    }
 }
 
 struct Circle {
@@ -95,7 +219,7 @@ impl Circle {
                 ) * (radius / 2.0)
             };
             surface.push(center + vec2((radius + noise) * a.sin(), (radius + noise) * a.cos()));
-            surface.push(center + vec2((radius) * a.sin(), (radius) * a.cos()));
+            //surface.push(center + vec2((radius) * a.sin(), (radius) * a.cos()));
         }
 
         surface
@@ -122,86 +246,6 @@ impl Circle {
             );
             last_point = point;
         }
-    }
-}
-
-struct Square {
-    center: Vec2,
-    size: f32,
-    rotation: f32,
-}
-
-impl Square {
-    pub const fn new(center: Vec2) -> Self {
-        Self {
-            center,
-            size: 25.0,
-            rotation: 0.0,
-        }
-    }
-    pub const fn rotated(self, rotation: f32) -> Self {
-        Self {
-            center: self.center,
-            size: self.size,
-            rotation,
-        }
-    }
-    pub const fn sized(self, size: f32) -> Self {
-        Self {
-            center: self.center,
-            size,
-            rotation: self.rotation,
-        }
-    }
-
-    pub fn corners(&self) -> [Vec2; 4] {
-        let half_size = self.size / 2.0;
-        let (x, y) = (self.center.x, self.center.y);
-
-        [
-            Vec2::new(x - half_size, y - half_size),
-            Vec2::new(x + half_size, y - half_size),
-            Vec2::new(x + half_size, y + half_size),
-            Vec2::new(x - half_size, y + half_size),
-        ]
-    }
-
-    pub fn draw(&self) {
-        let corners = self.corners();
-        let thickness = 5.0;
-        let color = color_u8!(155, 155, 155, 155);
-        draw_line(
-            corners[0].x,
-            corners[0].y,
-            corners[1].x,
-            corners[1].y,
-            thickness,
-            color,
-        );
-        draw_line(
-            corners[1].x,
-            corners[1].y,
-            corners[2].x,
-            corners[2].y,
-            thickness,
-            color,
-        );
-        draw_line(
-            corners[2].x,
-            corners[2].y,
-            corners[3].x,
-            corners[3].y,
-            thickness,
-            color,
-        );
-        draw_line(
-            corners[3].x,
-            corners[3].y,
-            corners[0].x,
-            corners[0].y,
-            thickness,
-            color,
-        );
     }
 }
 

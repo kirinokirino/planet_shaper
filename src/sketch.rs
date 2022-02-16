@@ -46,11 +46,8 @@ pub fn draw(_delta: f64) {
     if W {}
     *camera_follow = Some((player.center, player.rotation));
     player.draw();
-    unsafe {
-        CIRCLE
-            .get_or_init(|| Circle::new(vec2(0.0, 0.0), 1500.0))
-            .draw();
-    }
+    let circle = unsafe { CIRCLE.get_or_init(|| Circle::new(vec2(0.0, 0.0), 1500.0)) };
+    circle.draw();
     if lmb {
         let circle = Circle::new(vec2(0.0, 0.0), 1500.0);
         unsafe {
@@ -61,7 +58,33 @@ pub fn draw(_delta: f64) {
     }
 
     let (x, y) = unsafe { MOUSE };
-    draw_circle(x, y, 10.0, color_u8!(255, 0, 0, 255));
+    let mouse = Vec2::new(x, y);
+    let angle = mouse.angle_between(Vec2::new(0.0, 1.0));
+    let mut left = -10.0;
+    let mut right = 10.0;
+    let mut left_seg = Vec2::new(0.0, 0.0);
+    let mut right_seg = Vec2::new(0.0, 0.0);
+    for segment in &circle.surface {
+        let segment_angle = segment.angle_between(Vec2::new(0.0, 1.0));
+        let diff = angle - segment_angle;
+        if (diff < right && diff > 0.0) {
+            right = diff;
+            right_seg = *segment;
+        }
+        if (diff > left && diff < 0.0) {
+            left = diff;
+            left_seg = *segment;
+        }
+    }
+    draw_circle(left_seg.x, left_seg.y, 30.0, color_u8!(255, 0, 255, 255));
+    draw_circle(right_seg.x, right_seg.y, 30.0, color_u8!(0, 255, 255, 255));
+    let is_inside_planet = false;
+
+    if is_inside_planet {
+        draw_circle(x, y, 10.0, color_u8!(0, 255, 0, 255));
+    } else {
+        draw_circle(x, y, 10.0, color_u8!(255, 0, 0, 255));
+    }
     unsafe {
         FRAME += 1;
     }
@@ -77,6 +100,65 @@ pub fn map(value: f32, start1: f32, stop1: f32, start2: f32, stop2: f32) -> f32 
 
 pub fn norm(value: f32, start: f32, stop: f32) -> f32 {
     map(value, start, stop, 0.0, 1.0)
+}
+
+struct Circle {
+    center: Vec2,
+    radius: f32,
+
+    surface: Vec<Vec2>,
+}
+
+impl Circle {
+    pub fn new(center: Vec2, radius: f32) -> Self {
+        Self {
+            center,
+            radius,
+            surface: Self::create_surface(500, center, radius),
+        }
+    }
+
+    fn create_surface(surface_points: usize, center: Vec2, radius: f32) -> Vec<Vec2> {
+        let mut surface: Vec<Vec2> = Vec::with_capacity(surface_points);
+        let xoffset: i16 = rand::gen_range(100, 900);
+        let yoffset: i16 = rand::gen_range(100, 900);
+        for point in 0..surface_points {
+            let a = point as f32 * std::f32::consts::TAU / surface_points as f32;
+            let noise = unsafe {
+                NOISE.get_point(
+                    (a.sin() * 80.0 + f32::from(xoffset)) as u32,
+                    (a.cos() * 80.0 + f32::from(yoffset)) as u32,
+                ) * (radius / 2.0)
+            };
+            surface.push(center + vec2((radius + noise) * a.sin(), (radius + noise) * a.cos()));
+            //surface.push(center + vec2((radius) * a.sin(), (radius) * a.cos()));
+        }
+
+        surface
+    }
+
+    pub fn draw(&self) {
+        let scale = 5.0;
+        draw_triangle(
+            self.center + vec2(0.0, 1.0 * scale),
+            self.center + vec2(1.0 * scale, 0.0),
+            self.center + vec2(-1.0 * scale, 0.0),
+            color_u8!(50, 100, 200, 255),
+        );
+
+        let mut last_point = self.surface.last().expect("No points in surface");
+        for point in &self.surface {
+            draw_line(
+                point.x,
+                point.y,
+                last_point.x,
+                last_point.y,
+                20.0,
+                color_u8!(0, 0, 0, 255),
+            );
+            last_point = point;
+        }
+    }
 }
 
 struct Square {
@@ -176,65 +258,6 @@ impl Square {
             thickness,
             color,
         );
-    }
-}
-
-struct Circle {
-    center: Vec2,
-    radius: f32,
-
-    surface: Vec<Vec2>,
-}
-
-impl Circle {
-    pub fn new(center: Vec2, radius: f32) -> Self {
-        Self {
-            center,
-            radius,
-            surface: Self::create_surface(500, center, radius),
-        }
-    }
-
-    fn create_surface(surface_points: usize, center: Vec2, radius: f32) -> Vec<Vec2> {
-        let mut surface: Vec<Vec2> = Vec::with_capacity(surface_points);
-        let xoffset: i16 = rand::gen_range(100, 900);
-        let yoffset: i16 = rand::gen_range(100, 900);
-        for point in 0..surface_points {
-            let a = point as f32 * std::f32::consts::TAU / surface_points as f32;
-            let noise = unsafe {
-                NOISE.get_point(
-                    (a.sin() * 80.0 + f32::from(xoffset)) as u32,
-                    (a.cos() * 80.0 + f32::from(yoffset)) as u32,
-                ) * (radius / 2.0)
-            };
-            surface.push(center + vec2((radius + noise) * a.sin(), (radius + noise) * a.cos()));
-            //surface.push(center + vec2((radius) * a.sin(), (radius) * a.cos()));
-        }
-
-        surface
-    }
-
-    pub fn draw(&self) {
-        let scale = 5.0;
-        draw_triangle(
-            self.center + vec2(0.0, 1.0 * scale),
-            self.center + vec2(1.0 * scale, 0.0),
-            self.center + vec2(-1.0 * scale, 0.0),
-            color_u8!(50, 100, 200, 255),
-        );
-
-        let mut last_point = self.surface.last().expect("No points in surface");
-        for point in &self.surface {
-            draw_line(
-                point.x,
-                point.y,
-                last_point.x,
-                last_point.y,
-                20.0,
-                color_u8!(0, 0, 0, 255),
-            );
-            last_point = point;
-        }
     }
 }
 

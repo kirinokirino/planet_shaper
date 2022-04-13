@@ -37,8 +37,10 @@ impl Planet {
     ) -> Vec<Vec2> {
         let mut surface: Vec<Vec2> = Vec::with_capacity(surface_points);
         let padding = 200.0;
-        let xoffset: i16 = rand::gen_range(padding as i16, NOISE_SIZE as i16 - padding as i16);
-        let yoffset: i16 = rand::gen_range(padding as i16, NOISE_SIZE as i16 - padding as i16);
+        let xoffset: i16 =
+            macroquad::rand::gen_range(padding as i16, NOISE_SIZE as i16 - padding as i16);
+        let yoffset: i16 =
+            macroquad::rand::gen_range(padding as i16, NOISE_SIZE as i16 - padding as i16);
         for point in 0..surface_points {
             let a = point as f32 * std::f32::consts::TAU / surface_points as f32;
             let height = noise.get_point(
@@ -198,8 +200,9 @@ impl Planet {
             color_u8!(50, 100, 200, 255),
         );
 
-        let dotted = true;
-        if dotted {
+        let dotted_style = false;
+        let should_draw_radius = true;
+        if dotted_style {
             for point in &self.surface {
                 draw_circle(point.x, point.y, 5.0, color_u8!(255, 255, 255, 255));
             }
@@ -212,12 +215,27 @@ impl Planet {
                     last_point.x,
                     last_point.y,
                     20.0,
-                    color_u8!(0, 0, 0, 255),
+                    color_u8!(122, 122, 122, 255),
                 );
                 last_point = point;
             }
         }
+        if should_draw_radius {
+            let radius_brightness = 30;
+            draw_circle(
+                self.center.x,
+                self.center.y,
+                self.radius,
+                color_u8!(255, 255, 255, radius_brightness),
+            );
+            draw_circle(
+                self.center.x,
+                self.center.y,
+                self.max_radius,
+                color_u8!(255, 255, 255, radius_brightness),
+            );
+        }
         let Rect { x, y, w, h } = self.extents;
-        draw_rectangle_lines(x, y, w, h, 10.0, color_u8!(255, 255, 255, 255));
+        draw_rectangle_lines(x, y, w, h, 10.0, color_u8!(255, 255, 255, 50));
     }
 }

@@ -37,6 +37,7 @@ mod camera;
 mod common;
 mod noise;
 mod planet;
+mod player;
 mod world;
 use world::World;
 

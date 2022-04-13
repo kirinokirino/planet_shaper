@@ -5,6 +5,7 @@ use once_cell::sync::OnceCell;
 use crate::common::*;
 use crate::noise::Noise;
 use crate::planet::Planet;
+use crate::player::Player;
 
 pub const NOISE_SIZE: u16 = 2000;
 
@@ -14,6 +15,7 @@ pub struct World {
     noise: Noise,
 
     main_camera: Camera,
+    player: Option<Player>,
 }
 
 impl World {
@@ -24,6 +26,7 @@ impl World {
             planet_texture: None,
             noise: Noise::new(),
             main_camera: Camera::new(),
+            player: None,
         }
     }
 
@@ -32,16 +35,32 @@ impl World {
         let planet = self
             .planet
             .get_or_init(|| Planet::new(vec2(0.0, 0.0), 1500.0, noise));
-        let planet_image = Planet::as_image(planet);
-        self.planet_texture = Some(Texture2D::from_image(&planet_image));
+
+        let player = Player::new(planet.surface[0]);
+        self.player = Some(player);
+        //    let planet_image = Planet::as_image(planet);
+        //    self.planet_texture = Some(Texture2D::from_image(&planet_image));
     }
 
     pub fn input(&mut self) {
         let lmb = is_mouse_button_pressed(MouseButton::Left);
-        let _w = is_key_down(KeyCode::W) || is_key_down(KeyCode::Comma);
-        let _s = is_key_down(KeyCode::S) || is_key_down(KeyCode::O);
-        let _a = is_key_down(KeyCode::A);
-        let _d = is_key_down(KeyCode::D) || is_key_down(KeyCode::E);
+        let w = is_key_down(KeyCode::W) || is_key_down(KeyCode::Comma);
+        let s = is_key_down(KeyCode::S) || is_key_down(KeyCode::O);
+        let a = is_key_down(KeyCode::A);
+        let d = is_key_down(KeyCode::D) || is_key_down(KeyCode::E);
+
+        if let Some(player) = &mut self.player {
+            if w {
+                player.pos.y -= 1.0;
+            } else if s {
+                player.pos.y += 1.0;
+            }
+            if a {
+                player.pos.x -= 1.0;
+            } else if d {
+                player.pos.x += 1.0;
+            }
+        }
 
         if lmb {
             let camera = self.main_camera;
@@ -67,6 +86,9 @@ impl World {
 
         if is_key_down(KeyCode::LeftControl) {
             top_down_camera_controls(&mut self.main_camera);
+        } else if let Some(player) = &self.player {
+            self.main_camera.target.x = player.pos.x;
+            self.main_camera.target.y = player.pos.y;
         }
     }
 
@@ -110,6 +132,9 @@ impl World {
                 planet_y,
                 color_u8!(255, 255, 255, 255),
             );
+        } else {
+            let planet = self.planet.get().expect("Planet should exist on draw");
+            planet.draw();
         }
     }
 }

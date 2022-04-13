@@ -146,7 +146,7 @@ impl Planet {
 
         for y in 0..height {
             for x in 0..width {
-                let point = Vec2::new(extents.x + x as f32, extents.y + y as f32);
+                let point = Vec2::new(extents.x + f32::from(x), extents.y + f32::from(y));
                 let distance = point.distance(*center);
 
                 if distance < *radius {

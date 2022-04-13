@@ -50,16 +50,18 @@ impl World {
         let d = is_key_down(KeyCode::D) || is_key_down(KeyCode::E);
 
         if let Some(player) = &mut self.player {
+            let mut player_move = Vec2::new(0.0, 0.0);
             if w {
-                player.pos.y -= 1.0;
+                player_move.y -= 1.0;
             } else if s {
-                player.pos.y += 1.0;
+                player_move.y += 1.0;
             }
             if a {
-                player.pos.x -= 1.0;
+                player_move.x -= 1.0;
             } else if d {
-                player.pos.x += 1.0;
+                player_move.x += 1.0;
             }
+            player.apply_speed(player_move);
         }
 
         if lmb {
@@ -89,11 +91,15 @@ impl World {
         } else if let Some(player) = &self.player {
             self.main_camera.target.x = player.pos.x;
             self.main_camera.target.y = player.pos.y;
+            self.main_camera.rotation = player.rotation;
         }
     }
 
     pub fn update(&mut self) {
         self.main_camera.update();
+        if let Some(player) = &mut self.player {
+            player.update();
+        }
     }
 
     pub fn draw(&self) {
@@ -119,9 +125,24 @@ impl World {
         let _viewport = self.main_camera.viewport_rect();
         let (width, height) = (screen_width(), screen_height());
         let (center_x, center_y) = (self.main_camera.target.x, self.main_camera.target.y);
-        let top_left_x = center_x - width;
-        let top_left_y = center_y - height;
+        let _top_left_x = center_x - width;
+        let _top_left_y = center_y - height;
 
+        if let Some(player) = &self.player {
+            draw_rectangle(
+                player.pos.x - 5.0,
+                player.pos.y - 5.0,
+                10.0,
+                10.0,
+                color_u8!(255, 255, 255, 255),
+            );
+            draw_vector(
+                player.pos,
+                (self.planet.get().expect("should have a planet").center - player.pos).normalize()
+                    * 100.0, // - player.pos.normalize(),
+            );
+        }
+        draw_vector(Vec2::new(0.0, 0.0), Vec2::new(0.0, 1500.0));
         let planet_x = planet.extents.x;
         let planet_y = planet.extents.y;
 
